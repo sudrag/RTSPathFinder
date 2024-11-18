@@ -1,2 +1,3 @@
-# RTSPathFinder
-Path Finder algorithm for a Real-Time Strategy game
+- Class description
+- All Public API are in Caps . All Private API is camel case. All member variable start with m_
+- Constants file to help reusability. Added namespace to avoid conflicting implementations
