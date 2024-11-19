@@ -172,6 +172,17 @@ void PathFinder::parseMap(const std::string &mapFile)
             std::cout << "Does target exist?: " << targetExists << std::endl;
             throw std::runtime_error("Missing start/target position in parseMap function.");
         }
+        if (m_map[m_startPosition.x][m_startPosition.y] == m_terrainKeys.at(Elevated))
+        {
+            throw std::runtime_error("Start position is on an obstacle");
+        }
+        if (m_map[m_targetPosition.x][m_targetPosition.y] == m_terrainKeys.at(Elevated))
+        {
+            throw std::runtime_error("Target position is on an obstacle");
+        }
+
+        std::cout << "Map is parsed" << std::endl;
+        printMap();
     }
     catch (const nlohmann::json::exception &e)
     {
@@ -231,6 +242,8 @@ std::vector<PathFinder::Position> PathFinder::FindPath(const Position &start, co
                 path.push_back(node->pos);
             }
             std::reverse(path.begin(), path.end());
+            std::cout << "Path found. Adding visualization." << std::endl;
+            printMap(path);
             return path;
         }
 
@@ -263,5 +276,44 @@ std::vector<PathFinder::Position> PathFinder::FindPath(const Position &start, co
 
     // If no path is found
     std::cerr << "No path found." << std::endl;
+    printMap();
     return {};
 }
+
+void PathFinder::printMap(const std::vector<Position> &path) const
+{
+    int rows = m_map.size();
+    int cols = m_map[0].size();
+
+    for (int x = 0; x < rows; ++x)
+    {
+        for (int y = 0; y < cols; ++y)
+        {
+            Position current{x, y};
+
+            // Check for special symbols
+            if (current == m_startPosition)
+            {
+                std::cout << "S "; // Start
+            }
+            else if (current == m_targetPosition)
+            {
+                std::cout << "T "; // Target
+            }
+            else if (std::find(path.begin(), path.end(), current) != path.end())
+            {
+                std::cout << "P "; // Path
+            }
+            else if (m_map[x][y] == m_terrainKeys.at(Elevated))
+            {
+                std::cout << "# "; // Obstacle
+            }
+            else if (m_map[x][y] == m_terrainKeys.at(Reachable))
+            {
+                std::cout << ". "; // Free space
+            }
+        }
+        std::cout << '\n';
+    }
+}
+

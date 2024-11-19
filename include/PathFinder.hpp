@@ -63,6 +63,7 @@ namespace PathPlanner
         void parseMap(const std::string &mapFile);
         bool isValidPosition(const Position &pos) const;
         int manhattanDistance(Position a, Position b) const;
+        void printMap(const std::vector<Position>& path = {}) const;
     };
 }
 
