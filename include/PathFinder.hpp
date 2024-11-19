@@ -45,16 +45,16 @@ namespace PathPlanner
         PathFinder();
 
         // Public methods
-        std::vector<Position> FindPath(const Position &start, const Position &target);
+        void FindPaths();
         const std::vector<std::vector<int>> &GetMap() const { return m_map; }
-        Position GetStartPosition() const { return m_startPosition; }
-        Position GetTargetPosition() const { return m_targetPosition; }
+        Position GetStartPosition(int index) const;
+        Position GetTargetPosition(int index) const;
 
     private:
         // Private members
         std::vector<std::vector<int>> m_map;
-        Position m_startPosition;
-        Position m_targetPosition;
+        std::vector<Position> m_startPositions;
+        std::vector<Position> m_targetPositions;
         std::unordered_map<std::string, int> m_terrainKeys;
         std::string m_mapFilePath;
 
@@ -63,7 +63,9 @@ namespace PathPlanner
         void parseMap(const std::string &mapFile);
         bool isValidPosition(const Position &pos) const;
         int manhattanDistance(Position a, Position b) const;
-        void printMap(const std::vector<Position>& path = {}) const;
+        bool hasCollision(const std::vector<Position> &positions, const Position &newPosition, size_t currentIndex) const;
+        void printMap(const std::vector<std::vector<Position>> &paths = {}) const;
+        void validateMapPositions();
     };
 }
 
@@ -80,4 +82,18 @@ namespace std
     };
 
 }
+
+namespace std {
+    template <>
+    struct hash<std::vector<PathPlanner::PathFinder::Position>> {
+        size_t operator()(const std::vector<PathPlanner::PathFinder::Position> &positions) const noexcept {
+            size_t hash_value = 0;
+            for (const auto &pos : positions) {
+                hash_value ^= (std::hash<int>()(pos.x) ^ (std::hash<int>()(pos.y) << 1)) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+            }
+            return hash_value;
+        }
+    };
+}
+
 #endif // PATHFINDER_HPP

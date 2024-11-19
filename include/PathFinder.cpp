@@ -7,21 +7,30 @@
 
 // Standard Includes
 #include <fstream>
+#include <iostream>
+#include <queue>
 #include <stdexcept>
 #include <unordered_set>
-#include <queue>
-#include <iostream>
 using json = nlohmann::json;
 using namespace PathPlanner;
+using Position = PathPlanner::PathFinder::Position;
 
-// Constructor that parses the config file
+/**
+ * @brief Constructor for the PathFinder Class. Parses config file and map file
+ */
 PathFinder::PathFinder()
 {
     parseConfig(ConfigFilePath);
     parseMap(m_mapFilePath);
 }
 
-// Parse the configuration file
+/**
+ * @brief Parse the config file to obtain map file path and obtain terrain values for start, target,
+ * elevated and reachable.
+ *
+ * @param configFile Config File Path declared by the constructor
+ *
+ */
 void PathFinder::parseConfig(const std::string &configFile)
 {
     try
@@ -97,14 +106,19 @@ void PathFinder::parseConfig(const std::string &configFile)
     }
 }
 
-// Parse the map file
+/**
+ * @brief Parse the map file specified by the config file. Parse map to identify all the start and
+ * target positions in the maps
+ *
+ * @param mapFile File path to the map file
+ *
+ */
 void PathFinder::parseMap(const std::string &mapFile)
 {
     try
     {
         std::cout << "Parsing map data file" << std::endl;
         std::ifstream file(mapFile);
-        bool startExists, targetExists = false;
         if (!file.is_open())
         {
             throw std::runtime_error("Failed to open map file: " + mapFile);
@@ -144,17 +158,20 @@ void PathFinder::parseMap(const std::string &mapFile)
                 {
                     for (int j = 0; j < width; ++j)
                     {
+                        Position startPosition, targetPosition;
                         int index = i * width + j;
                         m_map[i][j] = int(data[index]);
                         if (m_map[i][j] == m_terrainKeys[Start])
                         {
-                            m_startPosition = {i, j};
-                            startExists = true;
+                            startPosition = {i, j};
+                            m_startPositions.push_back(startPosition);
+                            std::cout << "Start Position " << i << " ," << j << std::endl;
                         }
                         else if (m_map[i][j] == m_terrainKeys[Target])
                         {
-                            m_targetPosition = {i, j};
-                            targetExists = true;
+                            targetPosition = {i, j};
+                            m_targetPositions.push_back(targetPosition);
+                            std::cout << "Target Position " << i << " ," << j << std::endl;
                         }
                     }
                 }
@@ -165,22 +182,7 @@ void PathFinder::parseMap(const std::string &mapFile)
             std::cerr << "'Data' key not found in first layer!" << std::endl;
         }
 
-        if (!startExists || !targetExists)
-        {
-            std::cout << "Required points were not found in grid" << std::endl;
-            std::cout << "Does start exist?: " << startExists << std::endl;
-            std::cout << "Does target exist?: " << targetExists << std::endl;
-            throw std::runtime_error("Missing start/target position in parseMap function.");
-        }
-        if (m_map[m_startPosition.x][m_startPosition.y] == m_terrainKeys.at(Elevated))
-        {
-            throw std::runtime_error("Start position is on an obstacle");
-        }
-        if (m_map[m_targetPosition.x][m_targetPosition.y] == m_terrainKeys.at(Elevated))
-        {
-            throw std::runtime_error("Target position is on an obstacle");
-        }
-
+        validateMapPositions();
         std::cout << "Map is parsed" << std::endl;
         printMap();
     }
@@ -199,88 +201,280 @@ void PathFinder::parseMap(const std::string &mapFile)
     }
 }
 
+/**
+ * @brief Validate start and target positions specified on the map. Check for number of each and if
+ * any of them are already on an obstacle
+ *
+ */
+void PathFinder::validateMapPositions()
+{
+    size_t len1 = m_startPositions.size();
+    size_t len2 = m_targetPositions.size();
+
+    if (len1 > len2)
+    {
+        // If there are lesser target positions than starting positions , duplicate the last target
+        // position till it matches the start positions size
+        auto lastTarget = m_targetPositions.back();
+        m_targetPositions.insert(m_targetPositions.end(), len1 - len2, lastTarget);
+    }
+    else if (len1 < len2)
+    {
+        // If there are lesser starting positions than target positions, trim the start positions
+        // vector to have 1:1 co-relation
+        m_targetPositions.resize(len1);
+    }
+
+    for (int i = 0; i < m_startPositions.size(); ++i)
+    {
+        Position startPos = m_startPositions[i];
+        if (m_map[startPos.x][startPos.y] == m_terrainKeys.at(Elevated))
+        {
+            std::cout << "Unit No: " << i << " has a start point on an obstacle" << std::endl;
+            throw std::runtime_error("Start position is on an obstacle");
+        }
+    }
+
+    for (int i = 0; i < m_startPositions.size(); ++i)
+    {
+        Position targetPos = m_targetPositions[i];
+        if (m_map[targetPos.x][targetPos.y] == m_terrainKeys.at(Elevated))
+        {
+            std::cout << "Unit No: " << i << " has a target point on an obstacle" << std::endl;
+            throw std::runtime_error("Start position is on an obstacle");
+        }
+    }
+}
+
+/**
+ * @brief Allows calling applications to access Start position of particular unit
+ *
+ * @param index Access start position of that particular unit
+ *
+ */
+Position PathFinder::GetStartPosition(int index) const
+{
+    if (index >= 0 && index < m_startPositions.size())
+    {
+        return m_startPositions[index];
+    }
+    else
+    {
+        throw std::out_of_range("Index out of bounds");
+    }
+}
+
+/**
+ * @brief Allows calling applications to access Start position of particular unit
+ *
+ * @param index Access start position of that particular unit
+ *
+ */
+Position PathFinder::GetTargetPosition(int index) const
+{
+    if (index >= 0 && index < m_startPositions.size())
+    {
+        return m_targetPositions[index];
+    }
+    else
+    {
+        throw std::out_of_range("Index out of bounds");
+    }
+}
+
+/**
+ * @brief Checks if the given Position exists within the bounds of a map and is reachable
+ *
+ * @param pos is an instance of the Position struct used to defined x and y positions in a 2D Map
+ *
+ * @return bool true if position is valid, false if position is out of bounds or on an obstactle
+ *
+ */
 bool PathFinder::isValidPosition(const Position &pos) const
 {
     const int elevated = m_terrainKeys.at(Elevated);
-    return pos.x >= 0 && pos.x < m_map.size() &&
-           pos.y >= 0 && pos.y < m_map[0].size() &&
+    return pos.x >= 0 && pos.x < m_map.size() && pos.y >= 0 && pos.y < m_map[0].size() &&
            m_map[pos.x][pos.y] != elevated;
 }
 
+/**
+ * @brief Compute the Manhattan distance between two points in a two dimensional map. Used as the
+ * heuristic for the A* algorithm
+ *
+ * @param a,b are both instances of the Position struct providing the two positions in the 2D Map
+ *
+ * @return int providing the Manhattan distance between the two points
+ */
 int PathFinder::manhattanDistance(Position a, Position b) const
 {
     return abs(a.x - b.x) + abs(a.y - b.y);
 }
 
-std::vector<PathFinder::Position> PathFinder::FindPath(const Position &start, const Position &target)
+/**
+ * @brief Used to identify if a position on the map has collision with any of the other units
+ *
+ * @param positions is a vector of current position of all the units.
+ *        newPosition is the target position being checked for collision. This is generally one of
+ * the neighbors of a chosen node currentIndex of the unit being checked for. Used to skip for
+ * checking collision against the same unit in the iteration
+ *
+ * @return bool return true if collision is detected with another unit, return false if no collision
+ * is detected
+ *
+ */
+bool PathFinder::hasCollision(const std::vector<Position> &positions, const Position &newPosition,
+                              size_t currentIndex) const
 {
-    std::cout << "Start position. X = " << start.x << " Y = " << start.y << std::endl;
-    std::cout << "Target position. X = " << target.x << " Y = " << target.y << std::endl;
-
-    std::priority_queue<Node, std::vector<Node>, std::greater<Node>> openList;
-    std::unordered_map<Position, Node> allNodes; // Store nodes directly
-    std::unordered_set<Position> closedList;
-
-    // Initialize the start node
-    allNodes[start] = Node(start, 0, manhattanDistance(start, target), nullptr);
-    openList.push(allNodes[start]);
-
-    while (!openList.empty())
+    for (size_t i = 0; i < positions.size(); ++i)
     {
-        Node current = openList.top();
-        openList.pop();
-
-        // Mark as visited
-        closedList.insert(current.pos);
-
-        // Check if target is reached
-        if (current.pos == target)
+        if (i != currentIndex && positions[i] == newPosition)
         {
-            std::vector<Position> path;
-            for (const Node *node = &current; node != nullptr; node = node->parent)
-            {
-                path.push_back(node->pos);
-            }
-            std::reverse(path.begin(), path.end());
-            std::cout << "Path found. Adding visualization." << std::endl;
-            printMap(path);
-            return path;
+            return true;
         }
+    }
+    return false;
+}
 
-        // Explore neighbors
-        std::vector<Position> neighbors = {
-            {current.pos.x + 1, current.pos.y},
-            {current.pos.x - 1, current.pos.y},
-            {current.pos.x, current.pos.y + 1},
-            {current.pos.x, current.pos.y - 1}};
+/**
+ * @brief Find Paths is the core logic of this class. It implements A* search algorithm for all
+ * units in the map. It ensures each unit moves by one step in each iteration and paths are updates
+ * till all units reach their targets. It reconstructs the paths after the units have reached their
+ * targets
+ *
+ */
+void PathFinder::FindPaths()
+{
+    // Initialize current positions for all units
+    std::vector<std::priority_queue<Node, std::vector<Node>, std::greater<Node>>> openLists(
+        m_startPositions.size());
+    std::vector<std::unordered_map<Position, Node>> allNodes(m_startPositions.size());
+    std::vector<std::unordered_set<Position>> closedLists(m_startPositions.size());
+    std::vector<std::vector<Position>> paths(
+        m_startPositions.size()); // Vector of paths for each unit
+    std::vector<bool> reachedTargets(m_startPositions.size(),
+                                     false); // Track which units have reached their targets
+    std::vector<Position> currentPositions =
+        m_startPositions; // Track current positions of all units
 
-        for (const auto &neighbor : neighbors)
+    // Initialize each unit's open list with its start node
+    for (size_t i = 0; i < m_startPositions.size(); ++i)
+    {
+        Node startNode(m_startPositions[i], 0,
+                       manhattanDistance(m_startPositions[i], m_targetPositions[i]), nullptr);
+        allNodes[i][m_startPositions[i]] = startNode;
+        openLists[i].push(startNode);
+    }
+
+    bool allReached = false;
+
+    while (!allReached)
+    {
+        allReached = true;
+
+        for (size_t i = 0; i < m_startPositions.size(); ++i)
         {
-            // Skip invalid or already visited positions
-            if (!isValidPosition(neighbor) || closedList.count(neighbor))
+            if (reachedTargets[i])
+            {
+                // Skip this robot as it has already reached its target
+                continue;
+            }
+
+            if (openLists[i].empty())
             {
                 continue;
             }
 
-            int gCost = current.gCost + 1;
-            int hCost = manhattanDistance(neighbor, target);
+            Node currentNode = openLists[i].top();
+            openLists[i].pop();
 
-            // Add new nodes or update existing ones if better path is found
-            if (!allNodes.count(neighbor) || gCost < allNodes[neighbor].gCost)
+            if (currentNode.pos == m_targetPositions[i])
             {
-                allNodes[neighbor] = Node(neighbor, gCost, hCost, &allNodes[current.pos]);
-                openList.push(allNodes[neighbor]);
+                // Goal reached, reconstruct path
+                std::vector<Position> path;
+                for (const Node *node = &currentNode; node != nullptr; node = node->parent)
+                {
+                    path.push_back(node->pos);
+                }
+                std::reverse(path.begin(), path.end());
+                paths[i] = path;
+
+                std::cout << "Unit " << i << " has reached its target." << std::endl;
+                reachedTargets[i] = true;
+                continue;
+            }
+
+            // Mark as visited
+            closedLists[i].insert(currentNode.pos);
+
+            // Expand neighbors for the current unit
+            std::vector<Position> neighbors = {{currentNode.pos.x + 1, currentNode.pos.y},
+                                               {currentNode.pos.x - 1, currentNode.pos.y},
+                                               {currentNode.pos.x, currentNode.pos.y + 1},
+                                               {currentNode.pos.x, currentNode.pos.y - 1}};
+
+            for (const auto &neighbor : neighbors)
+            {
+                // Skip invalid or already visited positions
+                if (!isValidPosition(neighbor) || closedLists[i].count(neighbor) ||
+                    hasCollision(currentPositions, neighbor, i))
+                {
+                    continue;
+                }
+
+                int gCost = currentNode.gCost + 1;
+                int hCost = manhattanDistance(neighbor, m_targetPositions[i]);
+                Node neighborNode(neighbor, gCost, hCost, &allNodes[i][currentNode.pos]);
+
+                // Add new nodes or update existing ones if a better path is found
+                if (!allNodes[i].count(neighbor) || gCost < allNodes[i][neighbor].gCost)
+                {
+                    allNodes[i][neighbor] = neighborNode;
+                    openLists[i].push(neighborNode);
+                }
+            }
+
+            // Update current position for collision detection
+            currentPositions[i] = currentNode.pos;
+
+            // Not all units have reached their targets yet
+            if (!reachedTargets[i])
+            {
+                allReached = false;
             }
         }
     }
 
-    // If no path is found
-    std::cerr << "No path found." << std::endl;
-    printMap();
-    return {};
+    // Print final paths
+    for (size_t i = 0; i < paths.size(); ++i)
+    {
+        if (!paths[i].empty())
+        {
+            std::cout << "Path for unit " << i << ":" << std::endl;
+            for (const auto &pos : paths[i])
+            {
+                std::cout << "(" << pos.x << ", " << pos.y << ") ";
+            }
+            std::cout << std::endl;
+        }
+        else
+        {
+            std::cerr << "No valid path found for unit " << i << std::endl;
+        }
+    }
+
+    printMap(paths);
 }
 
-void PathFinder::printMap(const std::vector<Position> &path) const
+/**
+ * @brief Function used to print the map with all the start , target, reachable and elevated
+ * positions with unique symbols. Function also prints all the solved paths for each unit. Each
+ * unit's path has a unique color
+ *
+ * @param paths Solved paths for all the units in the map. Arguement has a default empty value to
+ * reuse the function when printing the map after parsing but prior to solving
+ *
+ */
+void PathFinder::printMap(const std::vector<std::vector<Position>> &paths) const
 {
     int rows = m_map.size();
     int cols = m_map[0].size();
@@ -290,19 +484,51 @@ void PathFinder::printMap(const std::vector<Position> &path) const
         for (int y = 0; y < cols; ++y)
         {
             Position current{x, y};
+            bool isPath = false;
+            bool isStart = false;
+            bool isTarget = false;
+            int colorCode;
 
-            // Check for special symbols
-            if (current == m_startPosition)
+            // Check if the current position is a start or target position for any unit
+            for (size_t i = 0; i < m_startPositions.size(); ++i)
+            {
+                if (current == m_startPositions[i])
+                {
+                    isStart = true;
+                    break;
+                }
+                if (current == m_targetPositions[i])
+                {
+                    isTarget = true;
+                    break;
+                }
+            }
+
+            int iterator = 0;
+            // Check if the current position is part of any unit's path
+            for (const auto &path : paths)
+            {
+                if (std::find(path.begin(), path.end(), current) != path.end())
+                {
+                    isPath = true;
+                    colorCode = 31 + (iterator %
+                                      6); // Cycle through red, green, yellow, blue, magenta, cyan
+                }
+                iterator++;
+            }
+
+            // Print the appropriate symbol
+            if (isStart)
             {
                 std::cout << "S "; // Start
             }
-            else if (current == m_targetPosition)
+            else if (isTarget)
             {
                 std::cout << "T "; // Target
             }
-            else if (std::find(path.begin(), path.end(), current) != path.end())
+            else if (isPath)
             {
-                std::cout << "P "; // Path
+                std::cout << "\033[" << colorCode << "m" << "P " << "\033[0m"; // Path
             }
             else if (m_map[x][y] == m_terrainKeys.at(Elevated))
             {
@@ -316,4 +542,3 @@ void PathFinder::printMap(const std::vector<Position> &path) const
         std::cout << '\n';
     }
 }
-
