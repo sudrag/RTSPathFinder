@@ -1,6 +1,7 @@
 #ifndef PATHFINDER_HPP
 #define PATHFINDER_HPP
 
+// Standard Includes
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -73,12 +74,18 @@ class PathFinder
                       size_t currentIndex) const;
     void printMap(const std::vector<std::vector<Position>> &paths = {}) const;
     void validateMapPositions();
+    std::vector<Position> getNeighborsforCurrentNode(Node currentNode);
+    void printPaths(const std::vector<std::vector<Position>> &paths) const;
+
 };
 } // namespace PathPlanner
 
-// Specialization for hash<PathFinder::Position>
 namespace std
 {
+// Custom hash function for PathPlanner::PathFinder::Position
+// This function combines the hash values of x and y coordinates to produce a unique hash for each
+// position. The combination uses XOR and bit-shifting to ensure that different (x, y) pairs yield
+// different hash values.
 template <> struct hash<PathPlanner::PathFinder::Position>
 {
     size_t operator()(const PathPlanner::PathFinder::Position &p) const noexcept
@@ -87,10 +94,9 @@ template <> struct hash<PathPlanner::PathFinder::Position>
     }
 };
 
-} // namespace std
-
-namespace std
-{
+// Custom hash function for a vector of PathPlanner::PathFinder::Position
+// This function iterates over each Position in the vector and accumulates the hash value
+// using XOR and a golden ratio constant to reduce collision risk.
 template <> struct hash<std::vector<PathPlanner::PathFinder::Position>>
 {
     size_t
@@ -99,6 +105,9 @@ template <> struct hash<std::vector<PathPlanner::PathFinder::Position>>
         size_t hash_value = 0;
         for (const auto &pos : positions)
         {
+            // Calculate hash for each Position and combine it with the overall hash_value
+            // Uses a golden ratio constant (0x9e3779b9) to help distribute the hash values
+            // uniformly
             hash_value ^= (std::hash<int>()(pos.x) ^ (std::hash<int>()(pos.y) << 1)) + 0x9e3779b9 +
                           (hash_value << 6) + (hash_value >> 2);
         }

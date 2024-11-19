@@ -18,8 +18,8 @@ using Position = PathPlanner::PathFinder::Position;
 /**
  * @brief Constructor for the PathFinder Class. Parses config file and map file
  */
-PathFinder::PathFinder(const std::string &configFilePath):
-m_targetPositions({}),m_startPositions({}), m_map({})
+PathFinder::PathFinder(const std::string &configFilePath)
+    : m_targetPositions({}), m_startPositions({}), m_map({})
 {
     parseConfig(configFilePath);
     parseMap(m_mapFilePath);
@@ -399,11 +399,7 @@ void PathFinder::FindPaths()
             // Mark as visited
             closedLists[i].insert(currentNode.pos);
 
-            // Expand neighbors for the current unit
-            std::vector<Position> neighbors = {{currentNode.pos.x + 1, currentNode.pos.y},
-                                               {currentNode.pos.x - 1, currentNode.pos.y},
-                                               {currentNode.pos.x, currentNode.pos.y + 1},
-                                               {currentNode.pos.x, currentNode.pos.y - 1}};
+            std::vector<Position> neighbors = getNeighborsforCurrentNode(currentNode);
 
             for (const auto &neighbor : neighbors)
             {
@@ -437,7 +433,16 @@ void PathFinder::FindPaths()
         }
     }
 
-    // Print final paths
+    printPaths(paths);
+    printMap(paths);
+}
+
+/**
+ * @brief Used to print all the solved paths for the map
+ *
+ */
+void PathFinder::printPaths(const std::vector<std::vector<Position>> &paths) const
+{
     for (size_t i = 0; i < paths.size(); ++i)
     {
         if (!paths[i].empty())
@@ -454,8 +459,22 @@ void PathFinder::FindPaths()
             std::cerr << "No valid path found for unit " << i << std::endl;
         }
     }
+}
 
-    printMap(paths);
+/**
+ * @brief Used to identify all the neighboring nodes the unit can move from its current node
+ *
+ * @param currentNode Current node the unit is in
+ *
+ * @return vector<Position> all the viable positions the unit can move to from the current node
+ *
+ */
+std::vector<Position> PathFinder::getNeighborsforCurrentNode(Node currentNode)
+{
+    return {{currentNode.pos.x + 1, currentNode.pos.y},
+            {currentNode.pos.x - 1, currentNode.pos.y},
+            {currentNode.pos.x, currentNode.pos.y + 1},
+            {currentNode.pos.x, currentNode.pos.y - 1}};
 }
 
 /**
