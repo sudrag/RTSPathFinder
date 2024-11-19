@@ -52,6 +52,8 @@ void PathFinder::parseConfig(const std::string &configFile)
         std::ifstream file(configFile);
         if (!file.is_open())
         {
+            std::cerr << "JSON parsing error at file: " << __FILE__ << ", line: " << __LINE__
+                      << std::endl;
             throw std::runtime_error("Failed to open config file: " + configFile);
         }
 
@@ -67,6 +69,8 @@ void PathFinder::parseConfig(const std::string &configFile)
         }
         else
         {
+            std::cerr << "JSON parsing error at file: " << __FILE__ << ", line: " << __LINE__
+                      << std::endl;
             throw std::runtime_error("Map file path not specified in config.");
         }
 
@@ -78,6 +82,8 @@ void PathFinder::parseConfig(const std::string &configFile)
         {
             if (m_terrainKeys.find(key) == m_terrainKeys.end())
             {
+                std::cerr << "JSON parsing error at file: " << __FILE__ << ", line: " << __LINE__
+                          << std::endl;
                 throw std::runtime_error("Missing required terrain key: " + key);
             }
         }
@@ -89,6 +95,8 @@ void PathFinder::parseConfig(const std::string &configFile)
             int value = m_terrainKeys[key];
             if (keyValues.count(value))
             {
+                std::cerr << "JSON parsing error at file: " << __FILE__ << ", line: " << __LINE__
+                          << std::endl;
                 throw std::runtime_error("Duplicate terrain key value detected for: " + key);
             }
             keyValues.insert(value);
@@ -101,6 +109,8 @@ void PathFinder::parseConfig(const std::string &configFile)
         }
         else
         {
+            std::cerr << "JSON parsing error at file: " << __FILE__ << ", line: " << __LINE__
+                      << std::endl;
             throw std::runtime_error("Map file path not specified in config.");
         }
     }
@@ -134,6 +144,8 @@ void PathFinder::parseMap(const std::string &mapFile)
         std::ifstream file(mapFile);
         if (!file.is_open())
         {
+            std::cerr << "JSON parsing error at file: " << __FILE__ << ", line: " << __LINE__
+                      << std::endl;
             throw std::runtime_error("Failed to open map file: " + mapFile);
         }
 
@@ -152,7 +164,9 @@ void PathFinder::parseMap(const std::string &mapFile)
         }
         else
         {
-            std::cerr << "Tilesets not found in JSON" << std::endl;
+            std::cerr << "JSON parsing error at file: " << __FILE__ << ", line: " << __LINE__
+                      << std::endl;
+            throw std::runtime_error("Tilesets not found in JSON");
         }
 
         // Check if the key "Layers" exists
@@ -189,10 +203,17 @@ void PathFinder::parseMap(const std::string &mapFile)
                     }
                 }
             }
+            else{
+                std::cerr << "JSON parsing error at file: " << __FILE__ << ", line: " << __LINE__
+                      << std::endl;
+            throw std::runtime_error("Missing data field in Layer");
+            }
         }
         else
         {
-            std::cerr << "'Data' key not found in first layer!" << std::endl;
+            std::cerr << "JSON parsing error at file: " << __FILE__ << ", line: " << __LINE__
+                      << std::endl;
+            throw std::runtime_error("Missing Layer field in Map");
         }
 
         validateMapPositions();

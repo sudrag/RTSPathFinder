@@ -271,6 +271,77 @@ TEST_F(PathFinderTest, MapParserCustomConfig)
     EXPECT_EQ(expected_target_unit0, target_unit0);
 }
 
+// Test parseConfig and parseMap for incorrect config file
+TEST_F(PathFinderTest, BadConfigFileWithMissingTerrain)
+{
+    // Create a modified config file with missing terrain value for elevated
+    nlohmann::json config = {
+        {"mapFile", "test_map.json"},
+        {"terrainKeys", {{"start", 4}, {"target", 6}, {"reachable", 8}}}};
+    writeJsonToFile("test_config.json", config);
+
+    EXPECT_ANY_THROW(PathFinder pathFinder("test_config.json"));
+}
+
+// Test parseConfig and parseMap for incorrect config file with bad path
+TEST_F(PathFinderTest, BadConfigFileWithIncorrectFilePath)
+{
+    // Create a modified config file with bad map file path
+    nlohmann::json config = {
+        {"mapFile", "badMapPath.json"},
+        {"terrainKeys", {{"start", 4}, {"target", 6}, {"elevated", 0}, {"reachable", 8}}}};
+    writeJsonToFile("test_config.json", config);
+
+    EXPECT_ANY_THROW(PathFinder pathFinder("test_config.json"));
+}
+
+// Test parseConfig and parseMap for incorrect map file with missing data
+TEST_F(PathFinderTest, BadMapFileWithMissingData)
+{
+    // Create a modified config file with different terrain values for the same keys
+    nlohmann::json config = {
+        {"mapFile", "test_map.json"},
+        {"terrainKeys", {{"start", 4}, {"target", 6}, {"elevated", 0}, {"reachable", 8}}}};
+    writeJsonToFile("test_config.json", config);
+
+    // Create a bad map file with missing data field
+    nlohmann::json mapData;
+    mapData["layers"] = {{{"name", "world"},
+                          {"tileset", "MapEditor Tileset_woodland.png"}}};
+    mapData["tilesets"] = {{{"name", "MapEditor Tileset_woodland.png"},
+                            {"image", "MapEditor Tileset_woodland.png"},
+                            {"imagewidth", 512},
+                            {"imageheight", 512},
+                            {"tilewidth", 4},
+                            {"tileheight", 4}}};
+    mapData["canvas"] = {{"width", 1024}, {"height", 1024}};
+    writeJsonToFile("test_map.json", mapData);
+
+
+    EXPECT_ANY_THROW(PathFinder pathFinder("test_config.json"));
+}
+
+// Test parseConfig and parseMap for incorrect map file with missing dimensions
+TEST_F(PathFinderTest, BadMapFileWithMissingDimension)
+{
+    // Create a modified config file with different terrain values for the same keys
+    nlohmann::json config = {
+        {"mapFile", "test_map.json"},
+        {"terrainKeys", {{"start", 4}, {"target", 6}, {"elevated", 0}, {"reachable", 8}}}};
+    writeJsonToFile("test_config.json", config);
+
+    // Create a bad map file with missing tilesets
+    nlohmann::json mapData;
+    mapData["layers"] = {{{"name", "world"},
+                          {"tileset", "MapEditor Tileset_woodland.png"}}};
+    mapData["canvas"] = {{"width", 1024}, {"height", 1024}};
+    writeJsonToFile("test_map.json", mapData);
+
+
+    EXPECT_ANY_THROW(PathFinder pathFinder("test_config.json"));
+}
+
+
 int main(int argc, char **argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
