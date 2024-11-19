@@ -79,10 +79,11 @@ Map with solved paths:
 ## Testing
 The testing suite uses **Google Test (gtest)** and includes the following features:
 - **Setup and Teardown**: The `SetUp()` and `TearDown()` functions in `gtest` ensure that all data files required by the tests are generated on-the-fly and deleted afterward to maintain a clean test environment.
-- **Test Cases**: There are **8 test cases** that verify different aspects of the implementation, such as:
+- **Test Cases**: There are **12 test cases** that verify different aspects of the implementation, such as:
   - **Constructor**: Tests basic instantiation.
   - **Map Creation**: Tests for a single start and target, multiple starts and targets, multiple start but insufficient targets, and maps with decimal values.
   - **FindPaths**: Tests pathfinding in various conditions like **no obstacles** and **only obstacles**.
+  - **Incorrect Configuration**: Tests map parsing with a missing fields in the config and map json file such as incorrect file name , missing terrain key , missing data field and missing map dimensions 
   - **Custom Config File**: Tests map parsing with a custom configuration, demonstrating flexibility in defining map values.
 
 These tests ensure that the `PathFinder` class is robust and capable of handling a variety of input configurations and map scenarios.
