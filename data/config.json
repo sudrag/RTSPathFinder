@@ -1,0 +1,10 @@
+{
+    "mapFile": "data/example_map_multi_unit.json",
+    "terrainKeys": {
+      "start": 0,
+      "target": 8,
+      "elevated": 3,
+      "reachable": -1
+    }
+}
+  
