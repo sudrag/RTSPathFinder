@@ -12,7 +12,6 @@ namespace PathPlanner
     inline const std::string Target = "target";
     inline const std::string Elevated = "elevated";
     inline const std::string Reachable = "reachable";
-    inline const std::string ConfigFilePath = "data/config.json";
     inline const std::string Tilesets = "tilesets";
     inline const std::string TileHeight = "tileheight";
     inline const std::string TileWidth = "tilewidth";

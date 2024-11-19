@@ -18,10 +18,23 @@ using Position = PathPlanner::PathFinder::Position;
 /**
  * @brief Constructor for the PathFinder Class. Parses config file and map file
  */
-PathFinder::PathFinder()
+PathFinder::PathFinder(const std::string &configFilePath):
+m_targetPositions({}),m_startPositions({}), m_map({})
 {
-    parseConfig(ConfigFilePath);
+    parseConfig(configFilePath);
     parseMap(m_mapFilePath);
+}
+
+/**
+ * @brief Destructor for the PathFinder Class. Clears all the member variables
+ */
+PathFinder::~PathFinder()
+{
+    m_targetPositions.clear();
+    m_startPositions.clear();
+    m_map.clear();
+    m_terrainKeys.clear();
+    m_mapFilePath.clear();
 }
 
 /**
@@ -224,26 +237,6 @@ void PathFinder::validateMapPositions()
         // vector to have 1:1 co-relation
         m_targetPositions.resize(len1);
     }
-
-    for (int i = 0; i < m_startPositions.size(); ++i)
-    {
-        Position startPos = m_startPositions[i];
-        if (m_map[startPos.x][startPos.y] == m_terrainKeys.at(Elevated))
-        {
-            std::cout << "Unit No: " << i << " has a start point on an obstacle" << std::endl;
-            throw std::runtime_error("Start position is on an obstacle");
-        }
-    }
-
-    for (int i = 0; i < m_startPositions.size(); ++i)
-    {
-        Position targetPos = m_targetPositions[i];
-        if (m_map[targetPos.x][targetPos.y] == m_terrainKeys.at(Elevated))
-        {
-            std::cout << "Unit No: " << i << " has a target point on an obstacle" << std::endl;
-            throw std::runtime_error("Start position is on an obstacle");
-        }
-    }
 }
 
 /**
@@ -265,14 +258,14 @@ Position PathFinder::GetStartPosition(int index) const
 }
 
 /**
- * @brief Allows calling applications to access Start position of particular unit
+ * @brief Allows calling applications to access Target position of particular unit
  *
- * @param index Access start position of that particular unit
+ * @param index Access target position of that particular unit
  *
  */
 Position PathFinder::GetTargetPosition(int index) const
 {
-    if (index >= 0 && index < m_startPositions.size())
+    if (index >= 0 && index < m_targetPositions.size())
     {
         return m_targetPositions[index];
     }

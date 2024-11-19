@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(RTSPathFinder)
 
+enable_testing()
+
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -26,3 +28,8 @@ add_dependencies(${PROJECT_NAME} CopyData)
 # Add libraries (using nlohmann_json)
 find_package(nlohmann_json CONFIG REQUIRED)
 target_link_libraries(RTSPathFinder PRIVATE nlohmann_json::nlohmann_json)
+
+# Add test executable
+add_executable(runTests tests/test_pathfinder.cpp include/PathFinder.cpp)
+target_link_libraries(runTests gtest gtest_main)
+add_test(NAME runTests COMMAND runTests)

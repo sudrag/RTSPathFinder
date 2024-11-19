@@ -8,7 +8,8 @@ int main()
 {
     std::cout << "Path Finding algorithm for a Real-Time Stategy game" << std::endl;
 
-    PathPlanner::PathFinder pathFinder;
+    const std::string filePath = "data/config.json";
+    PathPlanner::PathFinder pathFinder(filePath);
 
     pathFinder.FindPaths();
 
