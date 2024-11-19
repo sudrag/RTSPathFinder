@@ -104,6 +104,7 @@ void PathFinder::parseMap(const std::string &mapFile)
     {
         std::cout << "Parsing map data file" << std::endl;
         std::ifstream file(mapFile);
+        bool startExists, targetExists = false;
         if (!file.is_open())
         {
             throw std::runtime_error("Failed to open map file: " + mapFile);
@@ -126,6 +127,7 @@ void PathFinder::parseMap(const std::string &mapFile)
         {
             std::cerr << "Tilesets not found in JSON" << std::endl;
         }
+
         // Check if the key "Layers" exists
         if (mapJson.contains(Layers))
         {
@@ -143,14 +145,16 @@ void PathFinder::parseMap(const std::string &mapFile)
                     for (int j = 0; j < width; ++j)
                     {
                         int index = i * width + j;
-                        m_map[i][j] = data[index];
-                        if (data[index] == m_terrainKeys[Start])
+                        m_map[i][j] = int(data[index]);
+                        if (m_map[i][j] == m_terrainKeys[Start])
                         {
                             m_startPosition = {i, j};
+                            startExists = true;
                         }
-                        else if (data[index] == m_terrainKeys[Target])
+                        else if (m_map[i][j] == m_terrainKeys[Target])
                         {
                             m_targetPosition = {i, j};
+                            targetExists = true;
                         }
                     }
                 }
@@ -159,6 +163,14 @@ void PathFinder::parseMap(const std::string &mapFile)
         else
         {
             std::cerr << "'Data' key not found in first layer!" << std::endl;
+        }
+
+        if (!startExists || !targetExists)
+        {
+            std::cout << "Required points were not found in grid" << std::endl;
+            std::cout << "Does start exist?: " << startExists << std::endl;
+            std::cout << "Does target exist?: " << targetExists << std::endl;
+            throw std::runtime_error("Missing start/target position in parseMap function.");
         }
     }
     catch (const nlohmann::json::exception &e)
@@ -189,42 +201,32 @@ int PathFinder::manhattanDistance(Position a, Position b) const
     return abs(a.x - b.x) + abs(a.y - b.y);
 }
 
-std::vector<PathFinder::Position> PathFinder::FindPath(Position start, Position target)
+std::vector<PathFinder::Position> PathFinder::FindPath(const Position &start, const Position &target)
 {
-    struct Node
-    {
-        Position pos;
-        int gCost, hCost, fCost;
-        Node *parent;
-
-        Node(Position position, int g, int h, Node *p = nullptr)
-            : pos(position), gCost(g), hCost(h), parent(p)
-        {
-            fCost = gCost + hCost;
-        }
-
-        bool operator>(const Node &other) const
-        {
-            return fCost > other.fCost;
-        }
-    };
+    std::cout << "Start position. X = " << start.x << " Y = " << start.y << std::endl;
+    std::cout << "Target position. X = " << target.x << " Y = " << target.y << std::endl;
 
     std::priority_queue<Node, std::vector<Node>, std::greater<Node>> openList;
-    std::unordered_map<Position, Node *> allNodes;
-    std::unordered_map<Position, bool> closedList;
+    std::unordered_map<Position, Node> allNodes; // Store nodes directly
+    std::unordered_set<Position> closedList;
 
-    openList.emplace(start, 0, manhattanDistance(start, target));
+    // Initialize the start node
+    allNodes[start] = Node(start, 0, manhattanDistance(start, target), nullptr);
+    openList.push(allNodes[start]);
 
     while (!openList.empty())
     {
         Node current = openList.top();
         openList.pop();
-        closedList[current.pos] = true;
 
+        // Mark as visited
+        closedList.insert(current.pos);
+
+        // Check if target is reached
         if (current.pos == target)
         {
             std::vector<Position> path;
-            for (Node *node = &current; node != nullptr; node = node->parent)
+            for (const Node *node = &current; node != nullptr; node = node->parent)
             {
                 path.push_back(node->pos);
             }
@@ -232,6 +234,7 @@ std::vector<PathFinder::Position> PathFinder::FindPath(Position start, Position 
             return path;
         }
 
+        // Explore neighbors
         std::vector<Position> neighbors = {
             {current.pos.x + 1, current.pos.y},
             {current.pos.x - 1, current.pos.y},
@@ -240,17 +243,25 @@ std::vector<PathFinder::Position> PathFinder::FindPath(Position start, Position 
 
         for (const auto &neighbor : neighbors)
         {
-            if (!isValidPosition(neighbor) || closedList[neighbor])
+            // Skip invalid or already visited positions
+            if (!isValidPosition(neighbor) || closedList.count(neighbor))
+            {
                 continue;
+            }
 
             int gCost = current.gCost + 1;
             int hCost = manhattanDistance(neighbor, target);
 
-            if (!allNodes.count(neighbor) || gCost < allNodes[neighbor]->gCost)
+            // Add new nodes or update existing ones if better path is found
+            if (!allNodes.count(neighbor) || gCost < allNodes[neighbor].gCost)
             {
-                openList.emplace(neighbor, gCost, hCost, &current);
-                allNodes[neighbor] = new Node(neighbor, gCost, hCost, &current);
+                allNodes[neighbor] = Node(neighbor, gCost, hCost, &allNodes[current.pos]);
+                openList.push(allNodes[neighbor]);
             }
         }
     }
+
+    // If no path is found
+    std::cerr << "No path found." << std::endl;
+    return {};
 }
